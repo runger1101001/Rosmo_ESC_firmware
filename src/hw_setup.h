@@ -2,6 +2,11 @@
 #ifndef __HW_SETUP_H__
 #define __HW_SETUP_H__
 
+/**
+ * Defines Rosmo ESC's hardware setup (pins and peripherals).
+ */
+
+
 #include <SPI.h>
 #include <Wire.h>
 
@@ -42,6 +47,7 @@
 
 // voltage measurement
 #define VBAT_PIN            PB2
+#define VBAT_GAIN           ((2.2f+47.0f)/2.2f)
 
 // spi bus 1 - Sensor 0
 #define SENSOR0_nCS_PIN     PA4
@@ -58,7 +64,7 @@ extern SPIClass SPI_Sensor0;
 extern SPIClass SPI_Sensor1;
 
 // spi bus 3 - M-BUS header
-#define MBUS_nCS_PIN    PA15
+#define MBUS_nCS_PIN        PA15
 #define CIPO2_PIN           PC11
 #define COPI2_PIN           PC12
 #define SCLK2_PIN           PC10

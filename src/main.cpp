@@ -6,7 +6,7 @@
 #include "./hw_setup.h"
 #include "./NeoPixelStatus.h"
 #include "encoders/as5048a/MagneticSensorAS5048A.h"
-
+#include "voltage/GenericVoltageSense.h"
 
 
 #define SERIAL_SPEED 115200
@@ -43,11 +43,28 @@ BLDCDriver6PWM driver1 = BLDCDriver6PWM(M1_INUH_PIN, M1_INUL_PIN, M1_INVH_PIN, M
 BLDCMotor motor1 = BLDCMotor(MOTOR_PP, MOTOR_RES);
 
 // voltage
-float vbus = 6.0f;
+GenericVoltageSense vbus = GenericVoltageSense(VBAT_PIN, VBAT_GAIN);
 
 // main loop speed tracking
 int count = 0;
 long ts = 0;
+
+
+
+
+
+void printSensorStatus(MagneticSensorAS5048A* sensor){
+  uint16_t mag = sensor->readMagnitude();
+  SimpleFOCDebug::println("Sesnor magnitude: ", mag);
+  AS5048Diagnostics diag = sensor->readDiagnostics();
+  if (diag.compHigh) {
+    SimpleFOCDebug::println("Sesnor diagnostics: HIGH");
+  } else if (diag.compLow) {
+    SimpleFOCDebug::println("Sesnor diagnostics: LOW");
+  } else {
+    SimpleFOCDebug::println("Sesnor diagnostics: OK");
+  }
+};
 
 
 
@@ -68,24 +85,34 @@ void setup() {
   statusLED.setStatus(SimpleFOCStatusIndication::SIMPLEFOC_INITIALIZING);
 
   // configure voltage sensing
+  vbus.init();
+  for (int i=0; i<10; i++) {
+    vbus.update();
+    delayMicroseconds(500);
+  }
+  SimpleFOCDebug::println("Battery voltage: ", vbus.getVoltage());
 
   // configure motor drivers, 6-PWM
-  SimpleFOCDebug::println("Initializing drivers...");
-  driver0.voltage_power_supply = vbus;
-  driver1.voltage_power_supply = vbus;
+  driver0.voltage_power_supply = DEFAULT_VOLTAGE_LIMIT;//vbus.getVoltage();
+  driver1.voltage_power_supply = DEFAULT_VOLTAGE_LIMIT;//vbus.getVoltage();
   driver0.voltage_limit = DEFAULT_VOLTAGE_LIMIT;
   driver1.voltage_limit = DEFAULT_VOLTAGE_LIMIT;
+  SimpleFOCDebug::println("Initializing driver 0...");
   if (!driver0.init())
     SimpleFOCDebug::println("Driver 0 init failed!");
+  SimpleFOCDebug::println("Initializing driver 1...");
   if (!driver1.init())
     SimpleFOCDebug::println("Driver 1 init failed!");
 
   // configure current sensing
 
   // configure SPI for sensors, defer initialization
-  SimpleFOCDebug::println("Initializing sensors...");
+  SimpleFOCDebug::println("Initializing sensor 0...");
   sensor0->init(&SPI_Sensor0); // TODO make configurable and defer initialization
+  printSensorStatus(sensor0);
+  SimpleFOCDebug::println("Initializing sensor 1...");
   sensor1->init(&SPI_Sensor1);
+  printSensorStatus(sensor1);
 
   // configure BLDC motors, defer initialization
   SimpleFOCDebug::println("Initializing motors...");
@@ -99,10 +126,10 @@ void setup() {
   motor0.PID_velocity.P = motor1.PID_velocity.P = 0.2f;
   motor0.PID_velocity.I = motor1.PID_velocity.I = 2.0f;
   motor0.PID_velocity.D = motor1.PID_velocity.D = 0.0f;
-  motor0.PID_velocity.output_ramp = motor1.PID_velocity.output_ramp = 1000.0f;
+  motor0.PID_velocity.output_ramp = motor1.PID_velocity.output_ramp = 200.0f;
   motor0.PID_velocity.limit = motor1.PID_velocity.limit = DEFAULT_VOLTAGE_LIMIT; // TODO check this
   motor0.P_angle.P = motor1.P_angle.P = 20.0f;
-  motor0.LPF_velocity.Tf = motor1.LPF_velocity.Tf = 0.001f;
+  motor0.LPF_velocity.Tf = motor1.LPF_velocity.Tf = 0.05f;
   motor0.foc_modulation = motor1.foc_modulation = FOCModulationType::SinePWM;
   motor0.controller = motor1.controller = MotionControlType::velocity;
   motor0.motion_downsample = motor1.motion_downsample = 4;
@@ -185,8 +212,8 @@ void mainLoop() {
       count = 0;
     }
 
-    // // update voltage sense
-    // voltageSense.update();
+    // update voltage sense
+    //vbus.update();
     // // run commander
     // commander.run();
     // monitoring.run();
@@ -206,8 +233,8 @@ void loop() {
     sensor0->update();
   if (sensor1!=NULL)
     sensor1->update();
-  // // update voltage sense
-  // voltageSense.update();
+  // update voltage sense
+  vbus.update();
   // // update current sense
   // currentSense.update();
   // // run commander
@@ -217,12 +244,11 @@ void loop() {
   count++;
   if (millis() - ts > 1000) {
     ts = millis();
-    Serial.print("Iteration/s: ");
-    Serial.println(count);
-    Serial.print("Angles: ");
-    Serial.print(sensor0->getAngle());
-    Serial.print(", ");
-    Serial.println(sensor1->getAngle());
+    SimpleFOCDebug::println("Iteration/s: ", count);
+    SimpleFOCDebug::println("VBUS: ", vbus.getVoltage());
+    SimpleFOCDebug::print("Angles: ");
+    SimpleFOCDebug::print(sensor0->getAngle());
+    SimpleFOCDebug::println(", ", sensor1->getAngle());
     count = 0;
   }
 
