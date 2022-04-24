@@ -48,6 +48,7 @@
 // voltage measurement
 #define VBAT_PIN            PB2
 #define VBAT_GAIN           ((2.2f+47.0f)/2.2f)
+#define CURRENT_VpA         (2200.0f/9200.0f)
 
 // spi bus 1 - Sensor 0
 #define SENSOR0_nCS_PIN     PA4

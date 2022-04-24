@@ -7,7 +7,8 @@
 #include "./NeoPixelStatus.h"
 #include "encoders/as5048a/MagneticSensorAS5048A.h"
 #include "voltage/GenericVoltageSense.h"
-
+#include "./RosmoI2CCommander.h"
+#include "comms/serial/SerialASCIITelemetry.h"
 
 #define SERIAL_SPEED 115200
 #define FIRMWARE_VERSION "0.1"
@@ -27,7 +28,7 @@ SPIClass SPI_MBus = SPIClass(COPI2_PIN, CIPO2_PIN, SCLK2_PIN);
 SPISettings AS5048SlowSPISettings(2000000, AS5048_BITORDER, SPI_MODE1); 
 
 // define I2C instances
-// TODO
+TwoWire I2C_MBUS = TwoWire(I2C1_SDA_PIN, I2C1_SCL_PIN);
 
 // Status LED
 NeoPixelStatus statusLED = NeoPixelStatus(STATUS_LED_PIN, 1);
@@ -35,15 +36,26 @@ NeoPixelStatus statusLED = NeoPixelStatus(STATUS_LED_PIN, 1);
 // motor 0
 MagneticSensorAS5048A* sensor0 = new MagneticSensorAS5048A(SENSOR0_nCS_PIN, true, AS5048SlowSPISettings);
 BLDCDriver6PWM driver0 = BLDCDriver6PWM(M0_INUH_PIN, M0_INUL_PIN, M0_INVH_PIN, M0_INVL_PIN, M0_INWH_PIN, M0_INWL_PIN, M0_nSLEEP_PIN);
+LowsideCurrentSense current0 = LowsideCurrentSense(1.0f, 1.0f/CURRENT_VpA, M0_AOUTU_PIN, M0_AOUTV_PIN, M0_AOUTW_PIN);
 BLDCMotor motor0 = BLDCMotor(MOTOR_PP, MOTOR_RES);
 
 // motor 1
 MagneticSensorAS5048A* sensor1 = new MagneticSensorAS5048A(SENSOR1_nCS_PIN, true, AS5048SlowSPISettings);
 BLDCDriver6PWM driver1 = BLDCDriver6PWM(M1_INUH_PIN, M1_INUL_PIN, M1_INVH_PIN, M1_INVL_PIN, M1_INWH_PIN, M1_INWL_PIN, M1_nSLEEP_PIN);
+//LowsideCurrentSense current1 = LowsideCurrentSense(1.0f, 1.0f/CURRENT_VpA, M1_AOUTU_PIN, M1_AOUTV_PIN, M1_AOUTW_PIN);
 BLDCMotor motor1 = BLDCMotor(MOTOR_PP, MOTOR_RES);
 
 // voltage
 GenericVoltageSense vbus = GenericVoltageSense(VBAT_PIN, VBAT_GAIN);
+
+// i2c commander
+RosmoI2CCommander i2cCommander = RosmoI2CCommander(&I2C_MBUS);
+// interrupt callbacks
+void onReceive(int numBytes) { i2cCommander.onReceive(numBytes); }
+void onRequest() { i2cCommander.onRequest(); }
+
+SerialASCIITelemetry telemetry = SerialASCIITelemetry();
+
 
 // main loop speed tracking
 int count = 0;
@@ -104,8 +116,6 @@ void setup() {
   if (!driver1.init())
     SimpleFOCDebug::println("Driver 1 init failed!");
 
-  // configure current sensing
-
   // configure SPI for sensors, defer initialization
   SimpleFOCDebug::println("Initializing sensor 0...");
   sensor0->init(&SPI_Sensor0); // TODO make configurable and defer initialization
@@ -114,12 +124,23 @@ void setup() {
   sensor1->init(&SPI_Sensor1);
   printSensorStatus(sensor1);
 
+  // configure current sensing
+  SimpleFOCDebug::println("Initializing current sense...");
+  current0.linkDriver(&driver0);
+  //current1.linkDriver(&driver1);
+  if (current0.init()!=1)
+    SimpleFOCDebug::println("Current sense 0 init failed!");
+  // if (current1.init()!=1)
+  //   SimpleFOCDebug::println("Current sense 1 init failed!");
+
   // configure BLDC motors, defer initialization
   SimpleFOCDebug::println("Initializing motors...");
   motor0.linkSensor(sensor0);
   motor0.linkDriver(&driver0);
+  motor0.linkCurrentSense(&current0);
   motor1.linkSensor(sensor1);
   motor1.linkDriver(&driver1);
+  //motor1.linkCurrentSense(&current1);
 
   motor0.voltage_limit = motor1.voltage_limit = DEFAULT_VOLTAGE_LIMIT;
   motor0.velocity_limit = motor1.velocity_limit = 200.0f; // 200rad/s is pretty fast
@@ -163,10 +184,21 @@ void setup() {
     SimpleFOCDebug::println("Motor 1 not initialized.");
 
   // initialize I2C
+  // I2C_MBUS initialized via i2cCommander.init()
 
   // intialize I2CCommander
+  i2cCommander.addMotor(&motor0);
+  i2cCommander.addMotor(&motor1);
+  i2cCommander.init();
 
   // initialize SerialCommmander
+  // motor0.useMonitoring(Serial);
+  // motor0.monitor_downsample = 1000;
+  // motor0.monitor_variables = _MON_CURR_Q | _MON_VEL;
+  telemetry.addMotor(motor0);
+  uint8_t registers[] = { SimpleFOCRegister::REG_CURRENT_ABC, SimpleFOCRegister::REG_VELOCITY };
+  telemetry.setTelemetryRegisters(3, registers);
+  telemetry.init();
 
   SimpleFOCDebug::println("Startup complete.");
   ts = millis();  
@@ -209,6 +241,7 @@ void mainLoop() {
       ts = millis();
       Serial.print("Iteration/s: ");
       Serial.println(count);
+      i2cCommander.loopSpeed = count;
       count = 0;
     }
 
@@ -249,6 +282,7 @@ void loop() {
     SimpleFOCDebug::print("Angles: ");
     SimpleFOCDebug::print(sensor0->getAngle());
     SimpleFOCDebug::println(", ", sensor1->getAngle());
+    i2cCommander.loopSpeed = count;
     count = 0;
   }
 

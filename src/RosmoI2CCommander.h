@@ -11,6 +11,12 @@
 
 
 
+
+#define ROSMO_BASE_I2C_ADDRESS 0x40
+
+
+
+
 typedef enum : uint8_t {
     REG_LOOP_SPEED = 0x80,  // float, read-only
     REG_VBUS = 0x81,        // float, read-only
@@ -27,6 +33,9 @@ class RosmoI2CCommander : public I2CCommander {
     public:
         RosmoI2CCommander(TwoWire* wire = &Wire) : I2CCommander(wire) {};
         ~RosmoI2CCommander(){};
+
+        void init(uint8_t address) override;
+        void init();        
 
         float loopSpeed = 0.0f;
 
