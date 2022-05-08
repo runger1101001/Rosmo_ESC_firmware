@@ -9,7 +9,7 @@
 #include "voltage/GenericVoltageSense.h"
 
 
-extern GenericVoltageSense vbus;
+//extern GenericVoltageSense vbus;
 
 
 

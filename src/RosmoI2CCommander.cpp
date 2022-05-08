@@ -11,7 +11,7 @@ bool RosmoI2CCommander::sendRegister(uint8_t motorNum, uint8_t registerNum) {
             writeFloat(loopSpeed);
             break;
         case REG_VBUS:
-            writeFloat(vbus.getVoltage());
+            writeFloat(0.0f);//vbus.getVoltage());
             break;
         default:
             return I2CCommander::sendRegister(motorNum, registerNum);   // call superclass for the rest

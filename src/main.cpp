@@ -6,9 +6,9 @@
 #include "./hw_setup.h"
 #include "./NeoPixelStatus.h"
 #include "encoders/as5048a/MagneticSensorAS5048A.h"
-#include "voltage/GenericVoltageSense.h"
+//#include "voltage/GenericVoltageSense.h"
 #include "./RosmoI2CCommander.h"
-#include "comms/serial/SerialASCIITelemetry.h"
+//#include "comms/serial/SerialASCIITelemetry.h"
 
 #define SERIAL_SPEED 115200
 #define FIRMWARE_VERSION "0.1"
@@ -36,7 +36,7 @@ NeoPixelStatus statusLED = NeoPixelStatus(STATUS_LED_PIN, 1);
 // motor 0
 MagneticSensorAS5048A* sensor0 = new MagneticSensorAS5048A(SENSOR0_nCS_PIN, true, AS5048SlowSPISettings);
 BLDCDriver6PWM driver0 = BLDCDriver6PWM(M0_INUH_PIN, M0_INUL_PIN, M0_INVH_PIN, M0_INVL_PIN, M0_INWH_PIN, M0_INWL_PIN, M0_nSLEEP_PIN);
-LowsideCurrentSense current0 = LowsideCurrentSense(1.0f, 1.0f/CURRENT_VpA, M0_AOUTU_PIN, M0_AOUTV_PIN, M0_AOUTW_PIN);
+//LowsideCurrentSense current0 = LowsideCurrentSense(1.0f, 1.0f/CURRENT_VpA, M0_AOUTU_PIN, M0_AOUTV_PIN, M0_AOUTW_PIN);
 BLDCMotor motor0 = BLDCMotor(MOTOR_PP, MOTOR_RES);
 
 // motor 1
@@ -46,7 +46,7 @@ BLDCDriver6PWM driver1 = BLDCDriver6PWM(M1_INUH_PIN, M1_INUL_PIN, M1_INVH_PIN, M
 BLDCMotor motor1 = BLDCMotor(MOTOR_PP, MOTOR_RES);
 
 // voltage
-GenericVoltageSense vbus = GenericVoltageSense(VBAT_PIN, VBAT_GAIN);
+//GenericVoltageSense vbus = GenericVoltageSense(VBAT_PIN, VBAT_GAIN);
 
 // i2c commander
 RosmoI2CCommander i2cCommander = RosmoI2CCommander(&I2C_MBUS);
@@ -54,7 +54,7 @@ RosmoI2CCommander i2cCommander = RosmoI2CCommander(&I2C_MBUS);
 void onReceive(int numBytes) { i2cCommander.onReceive(numBytes); }
 void onRequest() { i2cCommander.onRequest(); }
 
-SerialASCIITelemetry telemetry = SerialASCIITelemetry();
+//SerialASCIITelemetry telemetry = SerialASCIITelemetry();
 
 
 // main loop speed tracking
@@ -67,14 +67,14 @@ long ts = 0;
 
 void printSensorStatus(MagneticSensorAS5048A* sensor){
   uint16_t mag = sensor->readMagnitude();
-  SimpleFOCDebug::println("Sesnor magnitude: ", mag);
+  SimpleFOCDebug::println("Sensor magnitude: ", mag);
   AS5048Diagnostics diag = sensor->readDiagnostics();
   if (diag.compHigh) {
-    SimpleFOCDebug::println("Sesnor diagnostics: HIGH");
+    SimpleFOCDebug::println("Sensor diagnostics: HIGH");
   } else if (diag.compLow) {
-    SimpleFOCDebug::println("Sesnor diagnostics: LOW");
+    SimpleFOCDebug::println("Sensor diagnostics: LOW");
   } else {
-    SimpleFOCDebug::println("Sesnor diagnostics: OK");
+    SimpleFOCDebug::println("Sensor diagnostics: OK");
   }
 };
 
@@ -97,12 +97,12 @@ void setup() {
   statusLED.setStatus(SimpleFOCStatusIndication::SIMPLEFOC_INITIALIZING);
 
   // configure voltage sensing
-  vbus.init();
-  for (int i=0; i<10; i++) {
-    vbus.update();
-    delayMicroseconds(500);
-  }
-  SimpleFOCDebug::println("Battery voltage: ", vbus.getVoltage());
+  // vbus.init();
+  // for (int i=0; i<10; i++) {
+  //   vbus.update();
+  //   delayMicroseconds(500);
+  // }
+  // SimpleFOCDebug::println("Battery voltage: ", vbus.getVoltage());
 
   // configure motor drivers, 6-PWM
   driver0.voltage_power_supply = DEFAULT_VOLTAGE_LIMIT;//vbus.getVoltage();
@@ -125,11 +125,11 @@ void setup() {
   printSensorStatus(sensor1);
 
   // configure current sensing
-  SimpleFOCDebug::println("Initializing current sense...");
-  current0.linkDriver(&driver0);
-  //current1.linkDriver(&driver1);
-  if (current0.init()!=1)
-    SimpleFOCDebug::println("Current sense 0 init failed!");
+  // SimpleFOCDebug::println("Initializing current sense...");
+  // current0.linkDriver(&driver0);
+  // //current1.linkDriver(&driver1);
+  // if (current0.init()!=1)
+  //   SimpleFOCDebug::println("Current sense 0 init failed!");
   // if (current1.init()!=1)
   //   SimpleFOCDebug::println("Current sense 1 init failed!");
 
@@ -137,7 +137,7 @@ void setup() {
   SimpleFOCDebug::println("Initializing motors...");
   motor0.linkSensor(sensor0);
   motor0.linkDriver(&driver0);
-  motor0.linkCurrentSense(&current0);
+  //motor0.linkCurrentSense(&current0);
   motor1.linkSensor(sensor1);
   motor1.linkDriver(&driver1);
   //motor1.linkCurrentSense(&current1);
@@ -192,13 +192,13 @@ void setup() {
   i2cCommander.init();
 
   // initialize SerialCommmander
-  // motor0.useMonitoring(Serial);
-  // motor0.monitor_downsample = 1000;
-  // motor0.monitor_variables = _MON_CURR_Q | _MON_VEL;
-  telemetry.addMotor(motor0);
-  uint8_t registers[] = { SimpleFOCRegister::REG_CURRENT_ABC, SimpleFOCRegister::REG_VELOCITY };
-  telemetry.setTelemetryRegisters(3, registers);
-  telemetry.init();
+  motor0.useMonitoring(Serial);
+  motor0.monitor_downsample = 1000;
+  motor0.monitor_variables = _MON_ANGLE | _MON_VEL;
+  // telemetry.addMotor(motor0);
+  // uint8_t registers[] = { SimpleFOCRegister::REG_CURRENT_ABC, SimpleFOCRegister::REG_VELOCITY };
+  // telemetry.setTelemetryRegisters(3, registers);
+  // telemetry.init();
 
   SimpleFOCDebug::println("Startup complete.");
   ts = millis();  
@@ -267,7 +267,7 @@ void loop() {
   if (sensor1!=NULL)
     sensor1->update();
   // update voltage sense
-  vbus.update();
+  //vbus.update();
   // // update current sense
   // currentSense.update();
   // // run commander
@@ -278,7 +278,7 @@ void loop() {
   if (millis() - ts > 1000) {
     ts = millis();
     SimpleFOCDebug::println("Iteration/s: ", count);
-    SimpleFOCDebug::println("VBUS: ", vbus.getVoltage());
+    //SimpleFOCDebug::println("VBUS: ", vbus.getVoltage());
     SimpleFOCDebug::print("Angles: ");
     SimpleFOCDebug::print(sensor0->getAngle());
     SimpleFOCDebug::println(", ", sensor1->getAngle());
