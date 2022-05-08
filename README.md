@@ -3,28 +3,30 @@
 
 An open source firmware based on [SimpleFOC](www.simplefoc.com) for [Rosmo](https://rosmo.io) robot's ESC board. The ESC board, like all of Rosmo, is open source and the design can be found [here](https://github.com/rosmo-robot/Rosmo_ESC).
 
+:exclamation: Work in progress! Running, basic motor control working, but very much still under development. See checkmarks in feature list below.
+
 ## Features
 
-- for STM32G4, specifically the STM32G491MET6, the MCU used on Rosmo ESC v1
-- 2x motor driver support in 6-PWM configuration
-- FOC - field oriented control of 2 motors
+- :white_check_mark: for STM32G4, specifically the STM32G491MET6, the MCU used on Rosmo ESC v1
+- :white_check_mark: 2x motor driver support in 6-PWM configuration
+- :white_check_mark: FOC - field oriented control of 2 motors
 - voltage, position, velocity or torque control modes
 - current sensing for 2 motors
-- USB support for programming, serial output and tuning control
-- m5 bus header connector to connect to m5 stack ecosystem
-- control via I2C or USB Serial port
+- USB support :negative_squared_cross_mark: for programming, :white_check_mark: serial output and :negative_squared_cross_mark: tuning control
+- :white_check_mark: m5 bus header connector to connect to m5 stack ecosystem
+- :white_check_mark: control via I2C or USB Serial port
 - compatible with SimpleFOC studio
 - support for 3 SPI connections
     - 2 with SH-1.0 ports for the motor encoder sensors
     - one attached to m5 bus header SPI
     - for m5 bus: 2 nCS pins selectable in hardware via jumpers
 - support for 2 I2C connections
-    - one on m5 bus header I2C
+    - :white_check_mark: one on m5 bus header I2C
     - one for grove I2C port
-    - 4 I2C addresses selectable in hardware via jumpers
-- ARM-10 debug header with SWD debug/programming support via STLink programmer (required to flash newly produced boards)
+    - :white_check_mark: 4 I2C addresses selectable in hardware via jumpers
+- :white_check_mark: ARM-10 debug header with SWD debug/programming support via STLink programmer (required to flash newly produced boards)
 - deep sleep support and wake from m5 bus support (2 pins selectable in hardware via jumpers)
-- written in C++ for Arduino framework using the PlatformIO embedded development environment
+- :white_check_mark: written in C++ for Arduino framework using the PlatformIO embedded development environment
 
 ## Setup
 
@@ -71,4 +73,20 @@ TODO
 
 ## Initial firmware flashing
 
+You will need:
+
+- STLink
+- Cable to connect to ARM-10 or STLink-14 header in 1.27mm pitch
+
+:information_source: a STLink V3 Mini comes with the right cable, and will work out of the box
+
+To flash the RosmoESC for the first time:
+
+ 1. Clone/Download this project, open it in PlatformIO and make sure it compiles. You will need the STM32 platform and the SimpleFOC Library and SimpleFOC Drivers Library as dependencies.
+ 1. If its the first time you're using your ST-Link, follow its instructions to install any necessary drivers for your OS.
+ 1. Connect the STLink to the RosmoESC. Pay careful attention to the orientation of the plug. (A normal ST-Link V3 Mini cable will have the cable facing towards the M5-Stack header when attached.)
+ 1. Connect the STLink to USB. It's power indication LED should come on.
+ 1. Connect the RosmoESC to USB to give it power
+ 1. Using PlatformIO, download this project to the RosmoESC.
+ 1. Open PlatformIO's Serial Monitor, using the RosmoESC's USB serial connection. You should see debug output from the RosmoESC.
 
